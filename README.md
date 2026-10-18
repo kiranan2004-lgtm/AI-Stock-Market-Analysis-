@@ -1,6 +1,8 @@
 # StockSense AI
 ### Stock Market Intelligence & Portfolio Analytics Platform
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/kiranan2004-lgtm/AI-Stock-Market-Analysis-)
+
 StockSense AI is an institutional-grade, full-stack financial data analytics, econometric forecasting, and portfolio management web application built with **Python 3.13**, **Django 5.0**, **Django REST Framework**, **Pandas**, **Scikit-learn**, **Statsmodels**, **TensorFlow/Keras**, and **Plotly.js**.
 
 Designed as a modern financial terminal, the platform integrates live and historical market data from Indian National Stock Exchange (NSE) equities, US large-caps (NASDAQ & NYSE), and broad-market ETFs alongside econometric time-series forecasting, quantitative indicator modeling, double-entry portfolio accounting, and lexical news sentiment analysis.
