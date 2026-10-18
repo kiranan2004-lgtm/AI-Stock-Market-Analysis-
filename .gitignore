@@ -1,0 +1,72 @@
+# ==============================================================================
+# StockSense AI - .gitignore
+# ==============================================================================
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment Variables, Secrets & Credentials
+.env
+.env.*
+!.env.example
+local_settings.py
+*.pem
+*.key
+*.cert
+*.crt
+secrets.json
+
+# Database & SQLite
+*.sqlite3
+*.sqlite3-journal
+db.sqlite3
+db.sqlite3-journal
+
+# Django Media & Static Artifacts
+staticfiles/
+media/
+*.log
+
+# Large Generated Archive Files & Backups
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Machine Learning Model Weights & Checkpoints (Generated locally)
+ml_models/*.keras
+ml_models/*.h5
+ml_models/*.pkl
+ml_models/*.joblib
+*.weights.h5
+
+# Node / Frontend Dependencies (if used)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Personal & Resume Files
+*Resume*
+resume_preview.png
+
+# IDEs & System Metadata
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+desktop.ini

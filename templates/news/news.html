@@ -1,0 +1,415 @@
+{% extends "base.html" %}
+
+{% block title %}Financial News Sentiment - StockSense AI{% endblock %}
+
+{% block extra_head %}
+<style>
+  .news-controls-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .news-filter-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .ticker-chips-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .ticker-chip {
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    text-decoration: none !important;
+    background: var(--bg-app);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    transition: all 0.15s ease;
+  }
+  .ticker-chip:hover {
+    background: var(--bg-surface-hover);
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+  }
+  .ticker-chip.active {
+    background: rgba(31, 111, 235, 0.15);
+    color: #58a6ff;
+    border-color: #1f6feb;
+  }
+  .sentiment-distribution-bar {
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    background: var(--bg-app);
+    margin-top: 0.75rem;
+  }
+  .dist-pos {
+    background: var(--color-positive);
+    transition: width 0.3s ease;
+  }
+  .dist-neu {
+    background: var(--text-muted);
+    transition: width 0.3s ease;
+  }
+  .dist-neg {
+    background: var(--color-negative);
+    transition: width 0.3s ease;
+  }
+  .article-card {
+    background: var(--bg-app);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 1.15rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .article-card:hover {
+    border-color: var(--border-strong);
+    background: var(--bg-surface-hover);
+  }
+  .article-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .article-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .article-headline {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-decoration: none;
+    line-height: 1.45;
+  }
+  .article-headline:hover {
+    color: var(--accent-primary);
+    text-decoration: underline;
+  }
+  .article-summary {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin: 0;
+  }
+  .article-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    padding-top: 0.4rem;
+    border-top: 1px dashed var(--border-subtle);
+  }
+  .article-source-link {
+    color: var(--accent-primary);
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .article-source-link:hover {
+    text-decoration: underline;
+  }
+  .loading-overlay {
+    display: none;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 2.5rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 1rem;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  .live-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--color-positive);
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 8px var(--color-positive);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Financial Media & Sentiment Analytics</h1>
+    <div class="page-subtitle">Real-time news ingestion with NLP sentiment scoring, polarity classification, and distribution analysis</div>
+  </div>
+  <div style="display: flex; align-items: center; gap: 0.75rem;">
+    <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-secondary); background: var(--bg-surface-elevated); padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border-subtle);">
+      <span class="live-dot"></span> {{ provider }}
+    </span>
+    <a href="?symbol={{ selected_symbol }}&refresh=1" class="btn btn-secondary btn-sm" onclick="showLoadingState()">
+      <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i> Refresh Live Feed
+    </a>
+  </div>
+</div>
+
+<!-- Controls: Ticker Dropdown, Search Input & Quick Filter Chips -->
+<div class="news-controls-card">
+  <div class="news-filter-bar">
+    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+      <span style="font-size: 13px; font-weight: 600; color: var(--text-secondary);">Select Ticker:</span>
+      <form id="filterForm" method="get" action="{% url 'news' %}" style="display: flex; gap: 0.5rem; align-items: center;" onsubmit="showLoadingState()">
+        <select name="symbol" class="form-select" style="min-width: 260px;" onchange="showLoadingState(); this.form.submit();">
+          <option value="">All Market News (Macro & Indices)</option>
+          {% for s in stocks %}
+            <option value="{{ s.symbol }}" {% if selected_symbol == s.symbol %}selected{% endif %}>
+              {{ s.symbol }} - {{ s.name }}
+            </option>
+          {% endfor %}
+        </select>
+        {% if selected_symbol %}
+          <a href="{% url 'news' %}" class="btn btn-secondary btn-sm" onclick="showLoadingState()">Clear</a>
+        {% endif %}
+      </form>
+    </div>
+
+    <div style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 0.4rem;">
+      <i data-lucide="cpu" style="width: 14px; height: 14px;"></i> Lexical Model: VADER Financial Sentiment Engine
+    </div>
+  </div>
+
+  <!-- Quick Ticker Chips -->
+  <div class="ticker-chips-row">
+    <span style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-right: 0.25rem;">Quick Select:</span>
+    <a href="{% url 'news' %}" class="ticker-chip {% if not selected_symbol %}active{% endif %}" onclick="showLoadingState()">
+      Market Macro
+    </a>
+    <a href="{% url 'news' %}?symbol=TCS.NS" class="ticker-chip {% if selected_symbol == 'TCS.NS' %}active{% endif %}" onclick="showLoadingState()">
+      TCS.NS
+    </a>
+    <a href="{% url 'news' %}?symbol=RELIANCE.NS" class="ticker-chip {% if selected_symbol == 'RELIANCE.NS' %}active{% endif %}" onclick="showLoadingState()">
+      RELIANCE.NS
+    </a>
+    <a href="{% url 'news' %}?symbol=INFY.NS" class="ticker-chip {% if selected_symbol == 'INFY.NS' %}active{% endif %}" onclick="showLoadingState()">
+      INFY.NS
+    </a>
+    <a href="{% url 'news' %}?symbol=HDFCBANK.NS" class="ticker-chip {% if selected_symbol == 'HDFCBANK.NS' %}active{% endif %}" onclick="showLoadingState()">
+      HDFCBANK.NS
+    </a>
+    <a href="{% url 'news' %}?symbol=AAPL" class="ticker-chip {% if selected_symbol == 'AAPL' %}active{% endif %}" onclick="showLoadingState()">
+      AAPL
+    </a>
+    <a href="{% url 'news' %}?symbol=MSFT" class="ticker-chip {% if selected_symbol == 'MSFT' %}active{% endif %}" onclick="showLoadingState()">
+      MSFT
+    </a>
+    <a href="{% url 'news' %}?symbol=NVDA" class="ticker-chip {% if selected_symbol == 'NVDA' %}active{% endif %}" onclick="showLoadingState()">
+      NVDA
+    </a>
+  </div>
+</div>
+
+<!-- Sentiment Overview Bar & Distribution Metric Cards -->
+<div class="card" style="margin-bottom: 1.5rem;">
+  <div class="card-header">
+    <div class="card-title">
+      {% if selected_symbol %}
+        {{ selected_symbol }}{% if selected_stock %} ({{ selected_stock.name }}){% endif %} Sentiment Distribution
+      {% else %}
+        Broad Market Sentiment Distribution ({{ distribution.total_articles|default:0 }} Articles)
+      {% endif %}
+    </div>
+    <div style="font-size: 11px; color: var(--text-muted);">Compound score interval: [-1.00 Bearish, +1.00 Bullish]</div>
+  </div>
+
+  <div class="indices-ticker-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 0;">
+    <!-- Positive -->
+    <div style="background: var(--bg-app); border: 1px solid var(--border-subtle); padding: 1rem; border-radius: var(--radius-sm);">
+      <div class="kpi-stat-label">Positive Sentiment</div>
+      <div class="kpi-stat-value num" style="color: var(--color-positive);">
+        {{ distribution.positive_pct|default:"0.0" }}%
+      </div>
+      <div class="kpi-stat-sub">{{ distribution.positive_count|default:0 }} bullish news items</div>
+    </div>
+
+    <!-- Neutral -->
+    <div style="background: var(--bg-app); border: 1px solid var(--border-subtle); padding: 1rem; border-radius: var(--radius-sm);">
+      <div class="kpi-stat-label">Neutral Tone</div>
+      <div class="kpi-stat-value num" style="color: var(--text-secondary);">
+        {{ distribution.neutral_pct|default:"0.0" }}%
+      </div>
+      <div class="kpi-stat-sub">{{ distribution.neutral_count|default:0 }} factual reports</div>
+    </div>
+
+    <!-- Negative -->
+    <div style="background: var(--bg-app); border: 1px solid var(--border-subtle); padding: 1rem; border-radius: var(--radius-sm);">
+      <div class="kpi-stat-label">Negative Sentiment</div>
+      <div class="kpi-stat-value num" style="color: var(--color-negative);">
+        {{ distribution.negative_pct|default:"0.0" }}%
+      </div>
+      <div class="kpi-stat-sub">{{ distribution.negative_count|default:0 }} cautionary articles</div>
+    </div>
+
+    <!-- Net Score -->
+    <div style="background: var(--bg-app); border: 1px solid var(--border-subtle); padding: 1rem; border-radius: var(--radius-sm);">
+      <div class="kpi-stat-label">Net Sentiment Score</div>
+      <div class="kpi-stat-value num" style="color: {% if distribution.average_score >= 0.05 %}var(--color-positive){% elif distribution.average_score <= -0.05 %}var(--color-negative){% else %}var(--text-secondary){% endif %};">
+        {% if distribution.average_score > 0 %}+{% endif %}{{ distribution.average_score|default:"0.00" }}
+      </div>
+      <div class="kpi-stat-sub">
+        {% if distribution.average_score >= 0.05 %}
+          Bullish Consensus Tone
+        {% elif distribution.average_score <= -0.05 %}
+          Bearish Cautionary Tone
+        {% else %}
+          Balanced Neutral Tone
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Visual Proportional Progress Bar -->
+  <div class="sentiment-distribution-bar" title="Sentiment Ratio: {{ distribution.positive_pct }}% Positive, {{ distribution.neutral_pct }}% Neutral, {{ distribution.negative_pct }}% Negative">
+    <div class="dist-pos" style="width: {{ distribution.positive_pct|default:0 }}%;"></div>
+    <div class="dist-neu" style="width: {{ distribution.neutral_pct|default:0 }}%;"></div>
+    <div class="dist-neg" style="width: {{ distribution.negative_pct|default:0 }}%;"></div>
+  </div>
+</div>
+
+<!-- Loading State Overlay -->
+<div id="loadingOverlay" class="loading-overlay">
+  <div class="spinner"></div>
+  <div style="font-weight: 600; font-size: 15px; color: var(--text-primary); margin-bottom: 0.35rem;">Ingesting Live Financial Media...</div>
+  <div style="font-size: 13px; color: var(--text-muted); max-width: 480px; margin: 0 auto;">
+    Querying financial news publishers, parsing metadata, and executing VADER lexical sentiment analysis.
+  </div>
+</div>
+
+<!-- Error Alert Banner if any -->
+{% if error_message %}
+  <div style="background: rgba(248, 81, 73, 0.1); border: 1px solid rgba(248, 81, 73, 0.3); border-radius: var(--radius-md); padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+    <i data-lucide="alert-circle" style="color: var(--color-negative); width: 20px; height: 20px; flex-shrink: 0;"></i>
+    <div style="font-size: 13px; color: var(--text-primary);">
+      <strong>Feed Notice:</strong> {{ error_message }}
+    </div>
+  </div>
+{% endif %}
+
+<!-- News Articles Feed -->
+<div id="articlesContainer" class="card" style="margin-bottom: 1.5rem;">
+  <div class="card-header">
+    <div class="card-title">
+      Live News Stream ({{ total_count|default:articles|length }} Verified Stories)
+    </div>
+    {% if selected_symbol %}
+      <span class="brand-tag">{{ selected_symbol }}</span>
+    {% else %}
+      <span class="brand-tag">MARKET-WIDE</span>
+    {% endif %}
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+    {% for article in articles %}
+      <article class="article-card">
+        <div class="article-header">
+          <div class="article-meta">
+            {% if article.stock %}
+              <span class="brand-tag">{{ article.stock.symbol }}</span>
+            {% endif %}
+            <span style="font-weight: 600; color: var(--text-secondary);">{{ article.publisher }}</span>
+            <span>&bull;</span>
+            <span>{{ article.published_at|date:"M d, Y · H:i" }} UTC</span>
+          </div>
+
+          <div>
+            <span class="delta-badge {% if article.sentiment_label == 'POSITIVE' %}pos{% elif article.sentiment_label == 'NEGATIVE' %}neg{% else %}neu{% endif %}" style="font-weight: 700; font-size: 11.5px;">
+              {{ article.sentiment_label }} ({% if article.sentiment_score > 0 %}+{% endif %}{{ article.sentiment_score|floatformat:2 }})
+            </span>
+          </div>
+        </div>
+
+        <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer" class="article-headline">
+          {{ article.headline }} &nearr;
+        </a>
+
+        {% if article.summary %}
+          <p class="article-summary">
+            {{ article.summary }}
+          </p>
+        {% endif %}
+
+        <div class="article-footer">
+          <span>Source: {{ article.publisher }}</span>
+          <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer" class="article-source-link">
+            Read original article on {{ article.publisher }} &nearr;
+          </a>
+        </div>
+      </article>
+    {% empty %}
+      <div class="empty-state">
+        <i data-lucide="newspaper" class="empty-state-icon"></i>
+        <div class="empty-state-title">No News Articles Found</div>
+        <div class="empty-state-desc">
+          {% if selected_symbol %}
+            No recent publications were identified for <strong>{{ selected_symbol }}</strong> in the active feed. You can explore other equities or view market-wide news.
+          {% else %}
+            No articles are currently available in the cache or live feed. Please verify network connectivity and refresh the feed.
+          {% endif %}
+        </div>
+        <div style="display: flex; justify-content: center; gap: 0.75rem;">
+          <a href="{% url 'news' %}" class="btn btn-secondary btn-sm" onclick="showLoadingState()">View Market News</a>
+          <a href="{% url 'news' %}?symbol=TCS.NS" class="btn btn-primary btn-sm" onclick="showLoadingState()">View TCS.NS</a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- NLP Methodology & Financial Disclaimer -->
+<div class="card">
+  <div style="font-size: 12px; color: var(--text-muted); line-height: 1.6;">
+    <strong>Methodology & Compliance Disclaimer:</strong> {{ disclaimer }}
+    Sentiment polarity classification uses the VADER (Valence Aware Dictionary and sEntiment Reasoner) rule-based NLP engine. Compound scores are normalized between -1.0 (extremely bearish) and +1.0 (extremely bullish). Headlines scoring &ge; +0.05 are classified as Positive, &le; -0.05 as Negative, and scores in between as Neutral. News sentiment analytics are intended solely for academic research and educational insights and do not constitute investment advice or trading recommendations.
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function showLoadingState() {
+    const overlay = document.getElementById('loadingOverlay');
+    const container = document.getElementById('articlesContainer');
+    if (overlay) {
+      overlay.style.display = 'block';
+    }
+    if (container) {
+      container.style.opacity = '0.5';
+    }
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Account Settings & Profile - StockSense AI{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Settings & User Profile</h1>
+      <div class="page-subtitle">Configure base reporting currency, themes, and platform preferences</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+      <div class="card-title">User Account Details</div>
+    </div>
+
+    <form method="post" action="{% url 'profile' %}">
+      {% csrf_token %}
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label" for="id_first_name">First Name</label>
+          {{ form.first_name }}
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="id_last_name">Last Name</label>
+          {{ form.last_name }}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="id_email">Email Address</label>
+        {{ form.email }}
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label" for="id_preferred_currency">Portfolio Base Reporting Currency</label>
+          {{ form.preferred_currency }}
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Holdings in other currencies are converted using benchmark FX rates.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="id_preferred_theme">Theme Mode</label>
+          {{ form.preferred_theme }}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="id_bio">Bio & Investment Philosophy</label>
+        {{ form.bio }}
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+        <button type="submit" class="btn btn-primary">
+          Save Preferences
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Security & Session</div>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
+      <div>
+        <div style="font-weight: 600; color: var(--text-primary);">Authenticated Session</div>
+        <div style="color: var(--text-muted); font-size: 12px;">Active username: <code>{{ user.username }}</code> &bull; Role: Investor / Analyst</div>
+      </div>
+      <a href="/logout/" class="btn btn-danger btn-sm">Sign Out</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

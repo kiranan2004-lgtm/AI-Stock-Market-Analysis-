@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - StockSense AI Market Intelligence{% endblock %}
+
+{% block content %}
+<!-- Page Title Header -->
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Market Intelligence & Portfolio Dashboard</h1>
+    <div class="page-subtitle">Real-time benchmark tracking, personal portfolio valuation, and market movers</div>
+  </div>
+  <div style="display: flex; gap: 0.5rem;">
+    <a href="/stocks/" class="btn btn-secondary btn-sm">
+      <i data-lucide="compass" style="width: 14px; height: 14px;"></i>
+      <span>Explore Equities</span>
+    </a>
+    <a href="/portfolio/transactions/" class="btn btn-primary btn-sm">
+      <i data-lucide="plus-circle" style="width: 14px; height: 14px;"></i>
+      <span>Add Transaction</span>
+    </a>
+  </div>
+</div>
+
+<!-- 1. Market Overview Indices Ticker Strip -->
+<section class="indices-ticker-grid">
+  {% for idx in indices %}
+    <div class="index-ticker-card">
+      <div class="index-info">
+        <div class="index-name">{{ idx.name }} ({{ idx.exchange }})</div>
+        <div class="index-price num">
+          {{ idx.currency_symbol }}{{ idx.current_price|floatformat:2 }}
+        </div>
+      </div>
+      <div class="index-delta">
+        <div class="delta-badge {% if idx.change > 0 %}pos{% elif idx.change < 0 %}neg{% else %}neu{% endif %} num">
+          {% if idx.change > 0 %}+{% endif %}{{ idx.change|floatformat:2 }} ({% if idx.change > 0 %}+{% endif %}{{ idx.change_pct|floatformat:2 }}%)
+        </div>
+        <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">{{ idx.status_text }}</div>
+      </div>
+    </div>
+  {% empty %}
+    <div class="card" style="grid-column: 1 / -1; padding: 1rem; color: var(--text-muted);">
+      Market benchmark indices loading...
+    </div>
+  {% endfor %}
+</section>
+
+<!-- 2. Portfolio Overview Metrics (Calculated from logged-in user's actual transactions) -->
+<section style="margin-bottom: 1.5rem;">
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Portfolio Capital & Valuation Summary</div>
+        <div style="font-size: 12px; color: var(--text-muted);">
+          Reporting Base: {{ portfolio_summary.base_currency }} &bull; {{ portfolio_summary.exchange_rate_applied }}
+        </div>
+      </div>
+      <a href="/portfolio/" class="card-action">Detailed Analysis &rarr;</a>
+    </div>
+
+    {% if portfolio_summary.is_empty %}
+      <div class="empty-state" style="padding: 2rem 1rem;">
+        <i data-lucide="wallet" class="empty-state-icon" style="width: 36px; height: 36px;"></i>
+        <div class="empty-state-title">No Transactions Recorded Yet</div>
+        <div class="empty-state-desc">
+          You haven't added any trade executions yet. Record your first buy transaction to view real-time mark-to-market performance, cost-basis, and sector allocations.
+        </div>
+        <a href="/portfolio/transactions/" class="btn btn-primary btn-sm">Record First Order</a>
+      </div>
+    {% else %}
+      <div class="card-grid grid-cols-4" style="gap: 1rem; margin-top: 0.5rem;">
+        <div style="background: var(--bg-app); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 1rem;">
+          <div class="kpi-stat-label">Total Invested Capital</div>
+          <div class="kpi-stat-value num">
+            {{ portfolio_summary.currency_symbol }}{{ portfolio_summary.total_invested|floatformat:2 }}
+          </div>
+          <div class="kpi-stat-sub">{{ portfolio_summary.total_holdings_count }} active equity position{{ portfolio_summary.total_holdings_count|pluralize }}</div>
+        </div>
+
+        <div style="background: var(--bg-app); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 1rem;">
+          <div class="kpi-stat-label">Current Market Value</div>
+          <div class="kpi-stat-value num">
+            {{ portfolio_summary.currency_symbol }}{{ portfolio_summary.current_value|floatformat:2 }}
+          </div>
+          <div class="kpi-stat-sub">Live mark-to-market valuation</div>
+        </div>
+
+        <div style="background: var(--bg-app); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 1rem;">
+          <div class="kpi-stat-label">Unrealized P&L</div>
+          <div class="kpi-stat-value num {% if portfolio_summary.unrealized_pl >= 0 %}pos{% else %}neg{% endif %}" style="color: {% if portfolio_summary.unrealized_pl >= 0 %}var(--color-positive){% else %}var(--color-negative){% endif %};">
+            {% if portfolio_summary.unrealized_pl >= 0 %}+{% endif %}{{ portfolio_summary.currency_symbol }}{{ portfolio_summary.unrealized_pl|floatformat:2 }}
+          </div>
+          <div class="kpi-stat-sub">
+            <span class="delta-badge {% if portfolio_summary.unrealized_pl >= 0 %}pos{% else %}neg{% endif %} num" style="font-size: 11px;">
+              {% if portfolio_summary.unrealized_pl >= 0 %}+{% endif %}{{ portfolio_summary.unrealized_pl_pct|floatformat:2 }}%
+            </span>
+            Return on Capital
+          </div>
+        </div>
+
+        <div style="background: var(--bg-app); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 1rem;">
+          <div class="kpi-stat-label">Realized Profit/Loss</div>
+          <div class="kpi-stat-value num" style="color: {% if portfolio_summary.realized_pl >= 0 %}var(--color-positive){% else %}var(--color-negative){% endif %};">
+            {% if portfolio_summary.realized_pl >= 0 %}+{% endif %}{{ portfolio_summary.currency_symbol }}{{ portfolio_summary.realized_pl|floatformat:2 }}
+          </div>
+          <div class="kpi-stat-sub">Net profits booked from completed sales</div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- 3. Dual Columns: Watchlist Preview & Market Movers -->
+<div style="display: grid; grid-template-columns: 1.3fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+  
+  <!-- Watchlist Preview Card -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Watchlist Preview ({{ default_watchlist.name|default:"Tracked Equities" }})</div>
+        <div style="font-size: 11px; color: var(--text-muted);">Real-time pricing for your monitored universe</div>
+      </div>
+      <a href="/watchlists/" class="card-action">Manage &rarr;</a>
+    </div>
+
+    <div class="table-responsive">
+      <table class="fin-table">
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>Name</th>
+            <th class="text-right">Price</th>
+            <th class="text-right">Change</th>
+            <th class="text-center">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for w in watchlist_quotes %}
+            <tr>
+              <td>
+                <a href="/stocks/{{ w.symbol }}/" style="font-weight: 700;">{{ w.symbol }}</a>
+              </td>
+              <td style="color: var(--text-secondary); max-width: 140px; overflow: hidden; text-overflow: ellipsis;">
+                {{ w.name }}
+              </td>
+              <td class="text-right num" style="font-weight: 600;">
+                {{ w.currency_symbol }}{{ w.current_price|floatformat:2 }}
+              </td>
+              <td class="text-right num">
+                <span class="delta-badge {% if w.change >= 0 %}pos{% else %}neg{% endif %}">
+                  {% if w.change >= 0 %}+{% endif %}{{ w.change_pct|floatformat:2 }}%
+                </span>
+              </td>
+              <td class="text-center">
+                <a href="/stocks/{{ w.symbol }}/" class="btn btn-secondary btn-sm" style="padding: 2px 6px; font-size: 11px;">Analyze</a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                No stocks added to watchlist yet. <a href="/stocks/">Browse Stock Explorer</a> to add equities.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Market Movers Card (Gainers, Losers, Actives) -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Market Movers</div>
+        <div style="font-size: 11px; color: var(--text-muted);">Top active movers from tracked stock universe</div>
+      </div>
+    </div>
+
+    <!-- Movers Tabs -->
+    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem;">
+      <button class="btn btn-sm btn-secondary" onclick="switchMoversTab('gainers')" id="btnTabGainers">Top Gainers</button>
+      <button class="btn btn-sm btn-secondary" onclick="switchMoversTab('losers')" id="btnTabLosers">Top Losers</button>
+      <button class="btn btn-sm btn-secondary" onclick="switchMoversTab('active')" id="btnTabActive">Most Active</button>
+    </div>
+
+    <!-- Movers Table -->
+    <div class="table-responsive">
+      <table class="fin-table" id="moversTable">
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th class="text-right">Price</th>
+            <th class="text-right">Change</th>
+          </tr>
+        </thead>
+        <tbody id="moversTableBody">
+          {% for g in market_movers.gainers %}
+            <tr class="mover-row mover-gainers">
+              <td>
+                <a href="/stocks/{{ g.symbol }}/" style="font-weight: 700;">{{ g.symbol }}</a>
+                <div style="font-size: 10px; color: var(--text-muted);">{{ g.name|truncatechars:18 }}</div>
+              </td>
+              <td class="text-right num">{{ g.currency_symbol }}{{ g.current_price|floatformat:2 }}</td>
+              <td class="text-right num">
+                <span class="delta-badge pos">+{{ g.change_pct|floatformat:2 }}%</span>
+              </td>
+            </tr>
+          {% endfor %}
+
+          {% for l in market_movers.losers %}
+            <tr class="mover-row mover-losers" style="display: none;">
+              <td>
+                <a href="/stocks/{{ l.symbol }}/" style="font-weight: 700;">{{ l.symbol }}</a>
+                <div style="font-size: 10px; color: var(--text-muted);">{{ l.name|truncatechars:18 }}</div>
+              </td>
+              <td class="text-right num">{{ l.currency_symbol }}{{ l.current_price|floatformat:2 }}</td>
+              <td class="text-right num">
+                <span class="delta-badge neg">{{ l.change_pct|floatformat:2 }}%</span>
+              </td>
+            </tr>
+          {% endfor %}
+
+          {% for a in market_movers.active %}
+            <tr class="mover-row mover-active" style="display: none;">
+              <td>
+                <a href="/stocks/{{ a.symbol }}/" style="font-weight: 700;">{{ a.symbol }}</a>
+                <div style="font-size: 10px; color: var(--text-muted);">Vol: {{ a.volume|filesizeformat }}</div>
+              </td>
+              <td class="text-right num">{{ a.currency_symbol }}{{ a.current_price|floatformat:2 }}</td>
+              <td class="text-right num">
+                <span class="delta-badge {% if a.change >= 0 %}pos{% else %}neg{% endif %}">
+                  {% if a.change >= 0 %}+{% endif %}{{ a.change_pct|floatformat:2 }}%
+                </span>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 4. Benchmark Chart Preview Section -->
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">NIFTY 50 Benchmark Interactive Index View</div>
+      <div style="font-size: 11px; color: var(--text-muted);">National Stock Exchange of India (NSE: ^NSEI) Historical Trend</div>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+      <a href="/stocks/TCS.NS/" class="btn btn-secondary btn-sm">Analyze TCS</a>
+      <a href="/stocks/RELIANCE.NS/" class="btn btn-secondary btn-sm">Analyze Reliance</a>
+    </div>
+  </div>
+  <div id="dashboardIndexChart" class="chart-box" style="height: 380px;"></div>
+</div>
+
+<script>
+function switchMoversTab(tabName) {
+  document.querySelectorAll('.mover-row').forEach(row => row.style.display = 'none');
+  document.querySelectorAll(`.mover-${tabName}`).forEach(row => row.style.display = '');
+
+  document.getElementById('btnTabGainers').classList.remove('btn-primary');
+  document.getElementById('btnTabLosers').classList.remove('btn-primary');
+  document.getElementById('btnTabActive').classList.remove('btn-primary');
+
+  if (tabName === 'gainers') document.getElementById('btnTabGainers').classList.add('btn-primary');
+  if (tabName === 'losers') document.getElementById('btnTabLosers').classList.add('btn-primary');
+  if (tabName === 'active') document.getElementById('btnTabActive').classList.add('btn-primary');
+}
+
+// Set initial tab active style
+document.getElementById('btnTabGainers').classList.add('btn-primary');
+
+// Load index chart
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const res = await fetch('/api/stocks/%5ENSEI/history/?period=6mo');
+    if (res.ok) {
+      const data = await res.json();
+      StockSenseCharts.renderStockChart('dashboardIndexChart', data.candles, null, 'line');
+    }
+  } catch (e) {
+    console.error('Failed to load dashboard chart:', e);
+  }
+});
+</script>
+{% endblock %}

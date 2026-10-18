@@ -1,0 +1,81 @@
+<aside class="app-sidebar">
+  <!-- Brand Logo -->
+  <div class="sidebar-brand">
+    <div class="brand-icon">S</div>
+    <div>
+      <div class="brand-text">StockSense AI</div>
+    </div>
+    <span class="brand-tag">v2.0</span>
+  </div>
+
+  <!-- Navigation Menu -->
+  <nav class="sidebar-nav">
+    <div class="nav-section-title">Core Intelligence</div>
+    <a href="/dashboard/" class="nav-link {% if request.path == '/dashboard/' %}active{% endif %}">
+      <i data-lucide="layout-dashboard"></i>
+      <span>Dashboard</span>
+    </a>
+    <a href="/stocks/" class="nav-link {% if '/stocks/' in request.path and not '/predictions/' in request.path %}active{% endif %}">
+      <i data-lucide="compass"></i>
+      <span>Stock Explorer</span>
+    </a>
+    <a href="/screener/" class="nav-link {% if '/screener/' in request.path %}active{% endif %}">
+      <i data-lucide="sliders-horizontal"></i>
+      <span>Screener & Compare</span>
+    </a>
+
+    <div class="nav-section-title">Portfolio & Tracking</div>
+    <a href="/portfolio/" class="nav-link {% if request.path == '/portfolio/' %}active{% endif %}">
+      <i data-lucide="pie-chart"></i>
+      <span>Portfolio Analytics</span>
+    </a>
+    <a href="/portfolio/transactions/" class="nav-link {% if '/transactions/' in request.path %}active{% endif %}">
+      <i data-lucide="receipt"></i>
+      <span>Transactions</span>
+    </a>
+    <a href="/watchlists/" class="nav-link {% if '/watchlists/' in request.path %}active{% endif %}">
+      <i data-lucide="bookmark"></i>
+      <span>Watchlists</span>
+    </a>
+    <a href="/alerts/" class="nav-link {% if '/alerts/' in request.path %}active{% endif %}">
+      <i data-lucide="bell"></i>
+      <span>Price Alerts</span>
+    </a>
+
+    <div class="nav-section-title">AI & Quantitative</div>
+    <a href="/predictions/" class="nav-link {% if '/predictions/' in request.path %}active{% endif %}">
+      <i data-lucide="trending-up"></i>
+      <span>ML Forecasting</span>
+    </a>
+    <a href="/news/" class="nav-link {% if '/news/' in request.path %}active{% endif %}">
+      <i data-lucide="newspaper"></i>
+      <span>News Sentiment</span>
+    </a>
+    <a href="/assistant/" class="nav-link {% if '/assistant/' in request.path %}active{% endif %}">
+      <i data-lucide="bot"></i>
+      <span>Research Assistant</span>
+    </a>
+
+    <div class="nav-section-title">Account</div>
+    <a href="/profile/" class="nav-link {% if '/profile/' in request.path %}active{% endif %}">
+      <i data-lucide="settings"></i>
+      <span>Settings & Profile</span>
+    </a>
+  </nav>
+
+  <!-- Sidebar Footer Profile -->
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="user-avatar">
+        {{ user.username|slice:":1"|upper }}
+      </div>
+      <div class="user-meta">
+        <div class="user-name">{{ user.first_name|default:user.username }}</div>
+        <div class="user-sub">{{ user.profile.preferred_currency|default:"INR" }} Account</div>
+      </div>
+      <a href="/logout/" title="Log Out" style="color: var(--text-muted); padding: 4px;">
+        <i data-lucide="log-out" style="width: 16px; height: 16px;"></i>
+      </a>
+    </div>
+  </div>
+</aside>

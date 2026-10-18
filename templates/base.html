@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}StockSense AI - Market Intelligence & Portfolio Analytics{% endblock %}</title>
+
+  <!-- Google Fonts: Inter & JetBrains Mono for Tabular Numerals -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Plotly.js Financial Charting -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <!-- StockSense Custom Stylesheet -->
+  <link rel="stylesheet" href="/static/css/stocksense.css">
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  {% if user.is_authenticated %}
+    <div class="app-shell">
+      <!-- Sidebar Navigation -->
+      {% include "components/sidebar.html" %}
+
+      <!-- Main Workspace -->
+      <div class="app-main">
+        <!-- Top Navigation Bar -->
+        {% include "components/navbar.html" %}
+
+        <!-- Flash Messages -->
+        {% if messages %}
+          <div style="padding: 1rem 1.5rem 0;">
+            {% for message in messages %}
+              <div style="padding: 0.75rem 1rem; border-radius: var(--radius-md); font-size: 13px; font-weight: 500; margin-bottom: 0.5rem;
+                {% if message.tags == 'error' %}background: var(--color-negative-bg); color: var(--color-negative); border: 1px solid var(--color-negative);
+                {% elif message.tags == 'success' %}background: var(--color-positive-bg); color: var(--color-positive); border: 1px solid var(--color-positive);
+                {% else %}background: var(--bg-surface-elevated); color: var(--text-primary); border: 1px solid var(--border-subtle);{% endif %}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <!-- Page Viewport -->
+        <main class="page-content">
+          {% block content %}{% endblock %}
+        </main>
+      </div>
+    </div>
+  {% else %}
+    <!-- Public / Authentication Layout -->
+    {% block public_content %}{% endblock %}
+  {% endif %}
+
+  <!-- Core JavaScript -->
+  <script src="/static/js/stocksense.js"></script>
+  <script src="/static/js/charts.js"></script>
+  <script>
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  </script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

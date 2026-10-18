@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Transaction Ledger - StockSense AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Transaction Ledger & Order Management</h1>
+    <div class="page-subtitle">Historical buy and sell execution records with cost-basis tracking</div>
+  </div>
+  <div style="display: flex; gap: 0.5rem;">
+    <a href="/portfolio/" class="btn btn-secondary btn-sm">
+      <i data-lucide="pie-chart" style="width: 14px; height: 14px;"></i>
+      <span>Portfolio Valuation</span>
+    </a>
+    <button class="btn btn-primary btn-sm" onclick="openModal('addTxModal')">
+      <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+      <span>Record Trade Execution</span>
+    </button>
+  </div>
+</div>
+
+<!-- Transactions Table -->
+<div class="card">
+  <div class="table-responsive">
+    <table class="fin-table">
+      <thead>
+        <tr>
+          <th>Execution Date</th>
+          <th>Order Type</th>
+          <th>Stock Symbol</th>
+          <th class="text-right">Quantity</th>
+          <th class="text-right">Execution Price</th>
+          <th class="text-right">Charges</th>
+          <th class="text-right">Net Amount</th>
+          <th>Notes</th>
+          <th class="text-center">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tx in transactions %}
+          <tr>
+            <td class="num">{{ tx.date|date:"Y-m-d" }}</td>
+            <td>
+              <span class="delta-badge {% if tx.transaction_type == 'BUY' %}pos{% else %}neg{% endif %}" style="font-weight: 700;">
+                {{ tx.transaction_type }}
+              </span>
+            </td>
+            <td>
+              <a href="/stocks/{{ tx.stock.symbol }}/" style="font-weight: 700;">{{ tx.stock.symbol }}</a>
+              <span style="font-size: 11px; color: var(--text-muted); margin-left: 4px;">{{ tx.stock.name|truncatechars:20 }}</span>
+            </td>
+            <td class="text-right num" style="font-weight: 600;">{{ tx.quantity|floatformat:2 }}</td>
+            <td class="text-right num">{{ tx.stock.currency_symbol }}{{ tx.price|floatformat:2 }}</td>
+            <td class="text-right num" style="color: var(--text-muted);">{{ tx.stock.currency_symbol }}{{ tx.charges|floatformat:2 }}</td>
+            <td class="text-right num" style="font-weight: 700;">
+              {{ tx.stock.currency_symbol }}{{ tx.net_amount|floatformat:2 }}
+            </td>
+            <td style="color: var(--text-secondary); font-size: 12px;">{{ tx.notes|default:"—" }}</td>
+            <td class="text-center">
+              <form method="post" action="{% url 'portfolio_transaction_delete' tx.id %}" style="display: inline;" onsubmit="return confirm('Delete this trade record? Your portfolio positions will be recalculated.');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-sm" style="padding: 2px 6px; font-size: 11px;">
+                  Delete
+                </button>
+              </form>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+              No trades recorded. Click "Record Trade Execution" above to enter your first order.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Record Transaction Modal -->
+<div id="addTxModal" class="modal-overlay">
+  <div class="modal-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+      <h3 style="font-size: 16px; font-weight: 700;">Record Trade Execution</h3>
+      <button onclick="closeModal('addTxModal')" style="background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer;">&times;</button>
+    </div>
+
+    <form method="post" action="{% url 'portfolio_transactions' %}">
+      {% csrf_token %}
+
+      {% if form.errors %}
+        <div style="background-color: var(--color-negative-bg); color: var(--color-negative); border: 1px solid var(--color-negative); padding: 0.65rem 0.85rem; border-radius: var(--radius-sm); font-size: 12px; margin-bottom: 1rem;">
+          {% for error in form.non_field_errors %}
+            <div>{{ error }}</div>
+          {% endfor %}
+          {% for field in form %}
+            {% for error in field.errors %}
+              <div><strong>{{ field.label }}:</strong> {{ error }}</div>
+            {% endfor %}
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <div class="form-group">
+        <label class="form-label">Equity Symbol</label>
+        {{ form.stock }}
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+        <div class="form-group">
+          <label class="form-label">Order Type</label>
+          {{ form.transaction_type }}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Execution Date</label>
+          {{ form.date }}
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+        <div class="form-group">
+          <label class="form-label">Quantity (Shares)</label>
+          {{ form.quantity }}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Execution Price</label>
+          {{ form.price }}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Brokerage & Taxes (Optional)</label>
+        {{ form.charges }}
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Trade Notes / Strategy (Optional)</label>
+        {{ form.notes }}
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addTxModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Execution</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+<header class="app-topbar">
+  <div class="topbar-left">
+    <!-- Global Stock Quick Search -->
+    <div class="global-search-wrapper">
+      <i data-lucide="search" class="global-search-icon"></i>
+      <input
+        type="text"
+        id="globalStockSearch"
+        class="global-search-input"
+        placeholder="Search stocks by symbol or company (e.g. TCS, RELIANCE, AAPL, NVDA)..."
+        autocomplete="off"
+      >
+      <div id="globalSearchDropdown" class="search-results-dropdown"></div>
+    </div>
+  </div>
+
+  <div class="topbar-right">
+    <!-- Market Status Beacons -->
+    <div class="market-status-pill" title="National Stock Exchange of India (09:15 - 15:30 IST)">
+      <span class="status-dot {% if not is_india_open %}closed{% endif %}"></span>
+      <span>NSE {% if is_india_open %}Open{% else %}Closed{% endif %}</span>
+    </div>
+
+    <div class="market-status-pill" title="US Markets: NASDAQ / NYSE (09:30 - 16:00 EST)">
+      <span class="status-dot {% if not is_us_open %}closed{% endif %}"></span>
+      <span>US {% if is_us_open %}Open{% else %}Closed{% endif %}</span>
+    </div>
+
+    <!-- Quick Action: Record Order -->
+    <a href="/portfolio/transactions/" class="btn btn-primary btn-sm">
+      <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+      <span>Record Trade</span>
+    </a>
+  </div>
+</header>

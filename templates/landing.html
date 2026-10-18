@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}StockSense AI - Market Intelligence & Portfolio Analytics Platform{% endblock %}
+
+{% block public_content %}
+<div style="background-color: var(--bg-app); min-height: 100vh; display: flex; flex-direction: column;">
+  <!-- Public Top Navigation -->
+  <header style="border-bottom: 1px solid var(--border-subtle); padding: 0.85rem 2rem; display: flex; align-items: center; justify-content: space-between; background: var(--bg-sidebar);">
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <div class="brand-icon">S</div>
+      <div>
+        <div class="brand-text" style="font-size: 16px;">StockSense AI</div>
+        <div style="font-size: 11px; color: var(--text-muted);">Stock Market Intelligence & Portfolio Analytics</div>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <a href="/login/" class="btn btn-secondary btn-sm">Sign In</a>
+      <a href="/signup/" class="btn btn-primary btn-sm">Create Account</a>
+    </div>
+  </header>
+
+  <!-- Hero Platform Banner -->
+  <section style="padding: 4rem 2rem 2.5rem; max-width: 1100px; margin: 0 auto; width: 100%;">
+    <div style="display: inline-flex; align-items: center; gap: 6px; background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 4px 10px; border-radius: var(--radius-sm); font-size: 12px; color: var(--accent-primary); margin-bottom: 1.5rem; font-weight: 500;">
+      <span class="status-dot"></span> Full-Stack Django 5.0 & Financial Data Engineering Platform
+    </div>
+
+    <h1 style="font-size: 2.75rem; font-weight: 800; letter-spacing: -1px; line-height: 1.15; color: var(--text-primary); margin-bottom: 1rem;">
+      Quantitative Market Intelligence &<br>Database-Backed Portfolio Accounting.
+    </h1>
+
+    <p style="font-size: 1.1rem; color: var(--text-secondary); max-width: 780px; line-height: 1.6; margin-bottom: 2rem;">
+      An institutional-grade research platform bridging Indian NSE equities, US markets, technical indicators, machine learning time-series forecasting, and double-entry transaction ledgers without simulated figures or synthetic hype.
+    </p>
+
+    <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+      <a href="/signup/" class="btn btn-primary" style="padding: 0.75rem 1.5rem; font-size: 14px;">
+        Get Started with Demo Account
+      </a>
+      <a href="/login/" class="btn btn-secondary" style="padding: 0.75rem 1.5rem; font-size: 14px;">
+        Sign In to Terminal
+      </a>
+      <span style="font-size: 12px; color: var(--text-muted);">Default credentials: <code style="color: var(--accent-primary);">demo_trader</code> / <code style="color: var(--accent-primary);">StockSense@2026</code></span>
+    </div>
+  </section>
+
+  <!-- Featured Market Equities Strip -->
+  <section style="border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle); background: var(--bg-surface); padding: 1.25rem 2rem;">
+    <div style="max-width: 1100px; margin: 0 auto;">
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); font-weight: 600; margin-bottom: 0.75rem;">
+        Tracked Market Benchmarks & Large-Cap Equities (Delayed Quotes)
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem;">
+        {% for q in featured_stocks %}
+          <div style="background: var(--bg-app); border: 1px solid var(--border-subtle); padding: 0.75rem 1rem; border-radius: var(--radius-sm);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-weight: 700; font-size: 13px;">{{ q.symbol }}</span>
+              <span class="brand-tag" style="font-size: 9px;">{{ q.exchange }}</span>
+            </div>
+            <div class="num" style="font-size: 15px; font-weight: 700; margin: 4px 0 2px;">
+              {{ q.currency_symbol }}{{ q.current_price|floatformat:2 }}
+            </div>
+            <div class="delta-badge {% if q.change >= 0 %}pos{% else %}neg{% endif %}" style="font-size: 11px;">
+              {% if q.change >= 0 %}+{% endif %}{{ q.change_pct|floatformat:2 }}%
+            </div>
+          </div>
+        {% empty %}
+          <div style="color: var(--text-muted); font-size: 13px;">Market benchmarks loading...</div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Architectural Pillars Grid -->
+  <section style="padding: 3.5rem 2rem; max-width: 1100px; margin: 0 auto; width: 100%;">
+    <div style="font-size: 12px; text-transform: uppercase; color: var(--accent-primary); font-weight: 600; letter-spacing: 0.8px; margin-bottom: 0.5rem;">
+      Platform Capabilities
+    </div>
+    <h2 style="font-size: 1.75rem; font-weight: 700; color: var(--text-primary); margin-bottom: 2rem;">
+      Engineered for Technical Rigor & Data Integrity
+    </h2>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+      <div class="card">
+        <div style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">
+          1. Rigorous ML Forecasting Pipeline
+        </div>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+          Re-architected LSTM neural networks, ARIMA autoregression, Random Forest, and Linear Regression baselines. Strictly chronological train/test splits, scalers fit only on training data, and honest out-of-sample MAE, RMSE, and Directional Accuracy.
+        </p>
+      </div>
+
+      <div class="card">
+        <div style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">
+          2. Mathematical Indicator Engine
+        </div>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+          Pure Python & Pandas computations of SMA (20, 50, 200), EMA (12, 26, 50), Wilder's smoothed RSI (14), MACD, Bollinger Bands (20, 2σ), and ATR with educational explanations and risk boundaries.
+        </p>
+      </div>
+
+      <div class="card">
+        <div style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">
+          3. Accounting-Grade Portfolio Ledger
+        </div>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+          Persistent database transaction models. Accurate calculation of per-stock holdings, average acquisition costs, realized profit from sales, unrealized mark-to-market P&L, and strict validation against overselling.
+        </p>
+      </div>
+
+      <div class="card">
+        <div style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">
+          4. Grounded AI Financial Assistant
+        </div>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+          Tool-grounded research assistant interfacing Google Gemini API or deterministic analytics engines. Answers stock questions using verified platform data rather than hallucinating price predictions.
+        </p>
+      </div>
+
+      <div class="card">
+        <div style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">
+          5. Financial News Sentiment NLP
+        </div>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+          Financial media news extraction with VADER sentiment scoring. Evaluates positive, negative, and neutral market sentiment per equity with explicit disclaimers regarding causation.
+        </p>
+      </div>
+
+      <div class="card">
+        <div style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">
+          6. Dual Currency: INR & USD
+        </div>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+          Proper handling of Indian NSE symbols in INR (₹) and US equities in USD ($). Does not mix raw numbers without explicit currency exchange rate translation.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer style="margin-top: auto; border-top: 1px solid var(--border-subtle); padding: 1.5rem 2rem; background: var(--bg-sidebar); text-align: center; font-size: 12px; color: var(--text-muted);">
+    <div>StockSense AI &bull; Production Full-Stack Portfolio Project &bull; Built with Django 5.0, DRF, Pandas, NumPy, Scikit-learn, TensorFlow & Plotly</div>
+  </footer>
+</div>
+{% endblock %}

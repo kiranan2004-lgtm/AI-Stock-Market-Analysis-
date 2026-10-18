@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}Stock Screener & Multi-Equity Comparison - StockSense AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Stock Screener & Multi-Stock Comparison</h1>
+    <div class="page-subtitle">Filter equities across exchanges and compare normalized historical return trajectories</div>
+  </div>
+</div>
+
+<!-- Comparative Return Chart Section -->
+<div class="card" style="margin-bottom: 1.5rem;">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Normalized Return Performance Comparison (Base 100)</div>
+      <div style="font-size: 11px; color: var(--text-muted);">
+        Visualizes relative capital appreciation indexed to 100 at the start of the horizon
+      </div>
+    </div>
+    <!-- Horizon Selector -->
+    <div style="display: flex; gap: 0.25rem;">
+      <button class="btn btn-sm btn-secondary" onclick="loadComparisonPeriod('1mo')" id="btnCmp1mo">1M</button>
+      <button class="btn btn-sm btn-secondary" onclick="loadComparisonPeriod('3mo')" id="btnCmp3mo">3M</button>
+      <button class="btn btn-sm btn-primary" onclick="loadComparisonPeriod('6mo')" id="btnCmp6mo">6M</button>
+      <button class="btn btn-sm btn-secondary" onclick="loadComparisonPeriod('1y')" id="btnCmp1y">1Y</button>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap;">
+    <span style="font-size: 12px; color: var(--text-secondary); font-weight: 600;">Comparison Symbols:</span>
+    <input
+      type="text"
+      id="cmpSymbolsInput"
+      class="form-input"
+      style="width: 320px; padding: 4px 8px; font-size: 12.5px;"
+      value="TCS.NS, INFY.NS, AAPL, RELIANCE.NS"
+      placeholder="e.g. TCS.NS, INFY.NS, AAPL"
+    >
+    <button class="btn btn-secondary btn-sm" onclick="fetchAndRenderComparison()">Update Chart</button>
+  </div>
+
+  <div id="comparisonChart" class="chart-box" style="height: 380px;"></div>
+</div>
+
+<!-- Stock Screener Filters -->
+<div class="card" style="margin-bottom: 1.5rem;">
+  <div class="card-header">
+    <div class="card-title">Universe Screener Filters</div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; align-items: flex-end;">
+    <div>
+      <label class="form-label">Sector</label>
+      <select id="filterSector" class="form-select">
+        <option value="ALL">All Sectors</option>
+        {% for s in sectors %}
+          <option value="{{ s }}">{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="form-label">Exchange</label>
+      <select id="filterExchange" class="form-select">
+        <option value="ALL">All Exchanges</option>
+        {% for e in exchanges %}
+          <option value="{{ e }}">{{ e }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="form-label">Min Price</label>
+      <input type="number" id="filterMinPrice" class="form-input" placeholder="Min price">
+    </div>
+
+    <div>
+      <label class="form-label">Max Price</label>
+      <input type="number" id="filterMaxPrice" class="form-input" placeholder="Max price">
+    </div>
+
+    <div>
+      <button class="btn btn-primary" style="width: 100%;" onclick="runScreener()">
+        Apply Filters
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Screener Results Table -->
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Screened Equities</div>
+      <div style="font-size: 11px; color: var(--text-muted);" id="screenerResultCount">Showing active equities</div>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="fin-table">
+      <thead>
+        <tr>
+          <th>Symbol</th>
+          <th>Name</th>
+          <th>Exchange</th>
+          <th>Sector</th>
+          <th class="text-right">Price</th>
+          <th class="text-right">Daily Change %</th>
+          <th class="text-right">Day High</th>
+          <th class="text-right">Day Low</th>
+          <th class="text-right">Volume</th>
+          <th class="text-center">Action</th>
+        </tr>
+      </thead>
+      <tbody id="screenerTableBody">
+        <tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading screener data...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+let cmpPeriod = '6mo';
+
+async function fetchAndRenderComparison() {
+  const symbols = document.getElementById('cmpSymbolsInput').value;
+  try {
+    const res = await fetch(`/api/compare/?symbols=${encodeURIComponent(symbols)}&period=${cmpPeriod}`);
+    const data = await res.json();
+
+    const traces = [];
+    const colors = ['#58a6ff', '#2ea043', '#bc8cff', '#f0883e', '#e3b341'];
+    let cIdx = 0;
+
+    for (const [sym, info] of Object.entries(data.stocks || {})) {
+      traces.push({
+        x: info.dates,
+        y: info.normalized,
+        type: 'scatter',
+        mode: 'lines',
+        name: `${sym} (${info.return_pct >= 0 ? '+' : ''}${info.return_pct}%)`,
+        line: { color: colors[cIdx % colors.length], width: 2 }
+      });
+      cIdx++;
+    }
+
+    const layout = {
+      margin: { l: 45, r: 25, t: 25, b: 35 },
+      paper_bgcolor: '#161b22',
+      plot_bgcolor: '#161b22',
+      font: { family: 'Inter, sans-serif', color: '#8b949e', size: 11 },
+      showlegend: true,
+      legend: { orientation: 'h', x: 0, y: 1.12, font: { color: '#c9d1d9', size: 10 } },
+      xaxis: { gridcolor: '#21262d', color: '#8b949e' },
+      yaxis: { gridcolor: '#21262d', color: '#8b949e', autorange: true, title: 'Indexed (Base 100)' }
+    };
+
+    Plotly.newPlot('comparisonChart', traces, layout, { responsive: true, displayModeBar: false });
+  } catch (e) {
+    console.error('Comparison error:', e);
+  }
+}
+
+function loadComparisonPeriod(p) {
+  cmpPeriod = p;
+  ['1mo', '3mo', '6mo', '1y'].forEach(btnP => {
+    const btn = document.getElementById(`btnCmp${btnP}`);
+    if (btn) {
+      if (btnP === p) {
+        btn.classList.add('btn-primary');
+        btn.classList.remove('btn-secondary');
+      } else {
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-secondary');
+      }
+    }
+  });
+  fetchAndRenderComparison();
+}
+
+async function runScreener() {
+  const sector = document.getElementById('filterSector').value;
+  const exchange = document.getElementById('filterExchange').value;
+  const minPrice = document.getElementById('filterMinPrice').value;
+  const maxPrice = document.getElementById('filterMaxPrice').value;
+
+  const tbody = document.getElementById('screenerTableBody');
+  tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2rem;">Filtering equities...</td></tr>`;
+
+  try {
+    const params = new URLSearchParams({
+      sector: sector,
+      exchange: exchange,
+      min_price: minPrice,
+      max_price: maxPrice
+    });
+    const res = await fetch(`/api/screener/?${params.toString()}`);
+    const data = await res.json();
+    const results = data.results || [];
+
+    document.getElementById('screenerResultCount').textContent = `Found ${results.length} equities matching criteria`;
+
+    if (results.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2rem;">No equities matched current filters.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = results.map(item => `
+      <tr>
+        <td><a href="/stocks/${item.symbol}/" style="font-weight: 700;">${item.symbol}</a></td>
+        <td>${item.name}</td>
+        <td><span class="brand-tag">${item.exchange}</span></td>
+        <td style="color: var(--text-muted); font-size: 12px;">${item.sector}</td>
+        <td class="text-right num" style="font-weight: 700;">${item.currency_symbol}${item.current_price.toFixed(2)}</td>
+        <td class="text-right num">
+          <span class="delta-badge ${item.change_pct >= 0 ? 'pos' : 'neg'}">
+            ${item.change_pct >= 0 ? '+' : ''}${item.change_pct.toFixed(2)}%
+          </span>
+        </td>
+        <td class="text-right num">${item.currency_symbol}${item.day_high.toFixed(2)}</td>
+        <td class="text-right num">${item.currency_symbol}${item.day_low.toFixed(2)}</td>
+        <td class="text-right num" style="color: var(--text-muted);">${(item.volume / 1000).toFixed(0)}k</td>
+        <td class="text-center">
+          <a href="/stocks/${item.symbol}/" class="btn btn-secondary btn-sm" style="padding: 2px 6px; font-size: 11px;">Workspace</a>
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error('Screener error:', err);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  fetchAndRenderComparison();
+  runScreener();
+});
+</script>
+{% endblock %}

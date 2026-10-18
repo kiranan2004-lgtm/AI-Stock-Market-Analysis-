@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+
+{% block title %}Machine Learning Forecasting - StockSense AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Machine Learning Econometric Forecasting</h1>
+    <div class="page-subtitle">Walk-forward validated models (LSTM, ARIMA, Random Forest, Linear Regression, and Hybrid Ensemble)</div>
+  </div>
+</div>
+
+<!-- Model Selection & Configuration Bar -->
+<div class="card" style="margin-bottom: 1.5rem;">
+  <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+    <!-- Stock Selector -->
+    <div style="flex: 1.5; min-width: 220px;">
+      <label class="form-label">Equity Symbol</label>
+      <select id="mlStockSelect" class="form-select">
+        {% for s in stocks %}
+          <option value="{{ s.symbol }}" {% if s.symbol == default_stock.symbol %}selected{% endif %}>
+            {{ s.symbol }} - {{ s.name }} ({{ s.exchange }})
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Model Type Selector -->
+    <div style="flex: 1.5; min-width: 200px;">
+      <label class="form-label">Forecasting Model</label>
+      <select id="mlModelSelect" class="form-select">
+        <option value="hybrid" selected>Hybrid LSTM-ARIMA Ensemble</option>
+        <option value="lstm">LSTM Deep Neural Network</option>
+        <option value="arima">ARIMA Autoregressive Time-Series</option>
+        <option value="random_forest">Random Forest Regressor</option>
+        <option value="linear">Linear Regression Baseline</option>
+      </select>
+    </div>
+
+    <!-- Forecast Horizon -->
+    <div style="flex: 1; min-width: 140px;">
+      <label class="form-label">Forecast Horizon</label>
+      <select id="mlHorizonSelect" class="form-select">
+        <option value="7">7 Trading Days</option>
+        <option value="14">14 Trading Days</option>
+        <option value="30" selected>30 Trading Days</option>
+      </select>
+    </div>
+
+    <!-- Actions -->
+    <div style="display: flex; gap: 0.5rem;">
+      <button class="btn btn-primary" onclick="runModelForecast()" id="btnRunForecast">
+        <i data-lucide="play" style="width: 14px; height: 14px;"></i>
+        <span>Execute Model</span>
+      </button>
+      <button class="btn btn-secondary" onclick="runModelComparison()" id="btnCompareModels">
+        <span>Compare All Models</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Error Alert Banner -->
+<div id="mlErrorAlert" style="display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--color-negative, #ef4444); color: var(--color-negative, #ef4444); padding: 0.85rem 1.25rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; font-size: 13px; align-items: center; justify-content: space-between;">
+  <div style="display: flex; align-items: center; gap: 0.65rem;">
+    <span style="font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; background: var(--color-negative, #ef4444); color: #fff; padding: 2px 6px; border-radius: 3px;">Model Notice</span>
+    <span id="mlErrorMessage">An error occurred while executing the forecast.</span>
+  </div>
+  <button type="button" onclick="document.getElementById('mlErrorAlert').style.display='none'" style="background: none; border: none; color: inherit; cursor: pointer; font-size: 18px; line-height: 1;">&times;</button>
+</div>
+
+<!-- Evaluation Metrics Cards Strip -->
+<div id="mlMetricsContainer" style="display: none; margin-bottom: 1.5rem;">
+  <div class="indices-ticker-grid" style="grid-template-columns: repeat(4, 1fr);">
+    <div class="card" style="padding: 1rem;">
+      <div class="kpi-stat-label">Directional Accuracy (Test Set)</div>
+      <div class="kpi-stat-value num" id="valDirAcc" style="color: var(--accent-indigo);">--%</div>
+      <div class="kpi-stat-sub">Percentage of correct sign predictions</div>
+    </div>
+
+    <div class="card" style="padding: 1rem;">
+      <div class="kpi-stat-label">Mean Absolute Error (MAE)</div>
+      <div class="kpi-stat-value num" id="valMAE">--</div>
+      <div class="kpi-stat-sub">Held-out test set average price deviation</div>
+    </div>
+
+    <div class="card" style="padding: 1rem;">
+      <div class="kpi-stat-label">Root Mean Squared Error (RMSE)</div>
+      <div class="kpi-stat-value num" id="valRMSE">--</div>
+      <div class="kpi-stat-sub">Test set penalizing large variance</div>
+    </div>
+
+    <div class="card" style="padding: 1rem;">
+      <div class="kpi-stat-label">Expected Return Projection</div>
+      <div class="kpi-stat-value num" id="valExpReturn">--%</div>
+      <div class="kpi-stat-sub" id="valPredictedTarget">Target: --</div>
+    </div>
+  </div>
+</div>
+
+<!-- Interactive Chart Card -->
+<div class="card" style="margin-bottom: 1.5rem;">
+  <div class="card-header">
+    <div>
+      <div class="card-title" id="chartTitle">Forecasting Validation & Projection Chart</div>
+      <div style="font-size: 11px; color: var(--text-muted);" id="chartSubtitle">
+        Compares actual out-of-sample test prices with model predictions, followed by multi-day forward projections
+      </div>
+    </div>
+    <div id="loadingSpinner" style="display: none; color: var(--accent-primary); font-size: 13px; font-weight: 500;">
+      Processing sequence...
+    </div>
+  </div>
+
+  <div id="forecastChart" class="chart-box" style="height: 420px;"></div>
+</div>
+
+<!-- Model Comparison Leaderboard Card -->
+<div class="card" id="comparisonLeaderboardCard" style="display: none; margin-bottom: 1.5rem;">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Side-by-Side Model Comparison Leaderboard</div>
+      <div style="font-size: 11px; color: var(--text-muted);">
+        All models trained and evaluated on identical chronological 20% held-out test partitions
+      </div>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="fin-table">
+      <thead>
+        <tr>
+          <th>Model Architecture</th>
+          <th class="text-right">Test RMSE (Lower is Better)</th>
+          <th class="text-right">Test MAE</th>
+          <th class="text-right">Directional Accuracy %</th>
+          <th class="text-right">Projected Return %</th>
+          <th>Configuration Details</th>
+        </tr>
+      </thead>
+      <tbody id="leaderboardBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Disclaimers & Methodology Card -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Statistical Integrity & Scientific Limitations</div>
+  </div>
+  <div style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.7;">
+    <p style="margin-bottom: 0.5rem;">
+      <strong>Data Leakage Prevention:</strong> Scalers and feature transformers are fit exclusively on training splits (earlier 80% chronologically). Out-of-sample test splits (most recent 20%) are used strictly for unbiased evaluation.
+    </p>
+    <p style="margin-bottom: 0.5rem;">
+      <strong>No Random Fallbacks:</strong> Unlike superficial trading toys that generate Gaussian noise or hardcode fake "94% confidence" metrics, all scores reported here are calculated out-of-sample residuals (<span class="num">MAE, RMSE</span>).
+    </p>
+    <p style="color: var(--text-muted);">
+      <strong>Disclaimer:</strong> Financial markets are non-stationary and influenced by exogenous macroeconomic and geopolitical events. All predictions are experimental quantitative research estimates and do not constitute investment advice.
+    </p>
+  </div>
+</div>
+
+<script>
+function showPredictionError(message) {
+  const alertBox = document.getElementById('mlErrorAlert');
+  const msgSpan = document.getElementById('mlErrorMessage');
+  if (alertBox && msgSpan) {
+    msgSpan.textContent = message;
+    alertBox.style.display = 'flex';
+  } else {
+    alert(message);
+  }
+}
+
+function clearPredictionError() {
+  const alertBox = document.getElementById('mlErrorAlert');
+  if (alertBox) {
+    alertBox.style.display = 'none';
+  }
+}
+
+async function runModelForecast() {
+  const symbol = (document.getElementById('mlStockSelect').value || 'TCS.NS').trim();
+  const model = document.getElementById('mlModelSelect').value || 'hybrid';
+  const horizon = document.getElementById('mlHorizonSelect').value || '30';
+
+  const spinner = document.getElementById('loadingSpinner');
+  const btn = document.getElementById('btnRunForecast');
+  const origBtnHtml = btn.innerHTML;
+
+  clearPredictionError();
+  spinner.style.display = 'block';
+  btn.disabled = true;
+  btn.innerHTML = '<span>Processing sequence...</span>';
+
+  try {
+    const url = `/api/predictions/${encodeURIComponent(symbol)}/?model=${encodeURIComponent(model)}&horizon=${encodeURIComponent(horizon)}`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    });
+    const contentType = res.headers.get('content-type') || '';
+
+    let data;
+    if (contentType.includes('application/json')) {
+      data = await res.json();
+    } else {
+      const rawText = await res.text();
+      const cleanSnippet = rawText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180);
+      throw new Error(`Server returned non-JSON response (HTTP ${res.status}): ${cleanSnippet || 'Received HTML instead of JSON.'}`);
+    }
+
+    if (!res.ok || !data.success) {
+      const errorMsg = data.error || `Forecast execution failed with HTTP status ${res.status}.`;
+      showPredictionError(errorMsg);
+      return;
+    }
+
+    // Display metric badges
+    document.getElementById('mlMetricsContainer').style.display = 'block';
+    document.getElementById('valDirAcc').textContent = `${data.metrics.directional_accuracy}%`;
+    document.getElementById('valMAE').textContent = `${data.metrics.mae}`;
+    document.getElementById('valRMSE').textContent = `${data.metrics.rmse}`;
+    
+    const retClass = data.expected_return_pct >= 0 ? 'pos' : 'neg';
+    document.getElementById('valExpReturn').innerHTML = `<span class="delta-badge ${retClass}">${data.expected_return_pct >= 0 ? '+' : ''}${data.expected_return_pct}%</span>`;
+    document.getElementById('valPredictedTarget').textContent = `Final Target: ${data.predicted_price}`;
+
+    document.getElementById('chartTitle').textContent = `${data.symbol} (${data.stock_name}) - ${data.model_type.toUpperCase()} Forecast`;
+
+    // Render Plotly line chart
+    if (window.StockSenseCharts && typeof window.StockSenseCharts.renderForecastChart === 'function') {
+      StockSenseCharts.renderForecastChart(
+        'forecastChart',
+        data.test_dates,
+        data.test_actual,
+        data.test_predictions,
+        data.future_forecast
+      );
+    }
+
+  } catch (err) {
+    showPredictionError(`Error running model: ${err.message || err}`);
+  } finally {
+    spinner.style.display = 'none';
+    btn.disabled = false;
+    btn.innerHTML = origBtnHtml;
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
+  }
+}
+
+async function runModelComparison() {
+  const symbol = (document.getElementById('mlStockSelect').value || 'TCS.NS').trim();
+  const btn = document.getElementById('btnCompareModels');
+  const card = document.getElementById('comparisonLeaderboardCard');
+  const tbody = document.getElementById('leaderboardBody');
+
+  clearPredictionError();
+  btn.disabled = true;
+  btn.textContent = 'Training & Evaluating Models...';
+  card.style.display = 'block';
+  tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">Training all 5 models on identical test data...</td></tr>`;
+
+  try {
+    const url = `/api/predictions/compare/${encodeURIComponent(symbol)}/`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    });
+    const contentType = res.headers.get('content-type') || '';
+
+    let data;
+    if (contentType.includes('application/json')) {
+      data = await res.json();
+    } else {
+      const rawText = await res.text();
+      const cleanSnippet = rawText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180);
+      throw new Error(`Server returned non-JSON response (HTTP ${res.status}): ${cleanSnippet || 'Received HTML instead of JSON.'}`);
+    }
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || `Model comparison failed with status ${res.status}.`);
+    }
+
+    const lb = data.leaderboard || [];
+    if (lb.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No evaluation metrics available for ${symbol}.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = lb.map((item, idx) => `
+      <tr style="${idx === 0 ? 'background: rgba(46, 160, 67, 0.08);' : ''}">
+        <td>
+          <strong>${item.model_name}</strong>
+          ${idx === 0 ? '<span class="delta-badge pos" style="margin-left: 6px; font-size: 10px;">Best Fit</span>' : ''}
+        </td>
+        <td class="text-right num" style="font-weight: 700;">${item.rmse}</td>
+        <td class="text-right num">${item.mae}</td>
+        <td class="text-right num" style="font-weight: 600;">${item.directional_accuracy}%</td>
+        <td class="text-right num">
+          <span class="delta-badge ${item.expected_return_pct >= 0 ? 'pos' : 'neg'}">
+            ${item.expected_return_pct >= 0 ? '+' : ''}${item.expected_return_pct}%
+          </span>
+        </td>
+        <td style="color: var(--text-muted); font-size: 11px;">${JSON.stringify(item.weights)}</td>
+      </tr>
+    `).join('');
+
+  } catch (err) {
+    showPredictionError(`Comparison error: ${err.message || err}`);
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--color-negative); padding: 1.5rem;">Failed to compare models: ${err.message || err}</td></tr>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Compare All Models';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Sync selected symbol from URL query if present
+  const params = new URLSearchParams(window.location.search);
+  const symParam = params.get('symbol');
+  if (symParam) {
+    const select = document.getElementById('mlStockSelect');
+    if (select) {
+      for (let opt of select.options) {
+        if (opt.value.toUpperCase() === symParam.toUpperCase()) {
+          select.value = opt.value;
+          break;
+        }
+      }
+    }
+  }
+
+  // Automatically execute forecast for selected stock
+  runModelForecast();
+});
+</script>
+{% endblock %}

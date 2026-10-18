@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}Portfolio Analytics - StockSense AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Portfolio Intelligence & Position Tracking</h1>
+    <div class="page-subtitle">Mark-to-market performance, cost-basis accounting, and asset allocations</div>
+  </div>
+  <div style="display: flex; gap: 0.5rem;">
+    <a href="/portfolio/transactions/" class="btn btn-secondary btn-sm">
+      <i data-lucide="receipt" style="width: 14px; height: 14px;"></i>
+      <span>Transaction Ledger</span>
+    </a>
+    <a href="/portfolio/transactions/" class="btn btn-primary btn-sm">
+      <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+      <span>Record Trade</span>
+    </a>
+  </div>
+</div>
+
+{% if analytics.is_empty %}
+  <!-- Empty State for New User -->
+  <div class="card">
+    <div class="empty-state">
+      <i data-lucide="wallet" class="empty-state-icon"></i>
+      <div class="empty-state-title">No Active Positions Found</div>
+      <div class="empty-state-desc">
+        Your portfolio does not have any active holdings recorded. Add your buy executions to unlock real-time valuation, unrealized P&L, and sector diversification analytics.
+      </div>
+      <a href="/portfolio/transactions/" class="btn btn-primary">
+        Record Your First Trade
+      </a>
+    </div>
+  </div>
+{% else %}
+  <!-- KPI Metrics Strip -->
+  <div class="indices-ticker-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 1.5rem;">
+    <div class="card" style="padding: 1rem;">
+      <div class="kpi-stat-label">Total Capital Invested</div>
+      <div class="kpi-stat-value num">
+        {{ analytics.currency_symbol }}{{ analytics.total_invested|floatformat:2 }}
+      </div>
+      <div class="kpi-stat-sub">Across {{ analytics.total_holdings_count }} active position{{ analytics.total_holdings_count|pluralize }}</div>
+    </div>
+
+    <div class="card" style="padding: 1rem;">
+      <div class="kpi-stat-label">Current Market Value</div>
+      <div class="kpi-stat-value num">
+        {{ analytics.currency_symbol }}{{ analytics.current_value|floatformat:2 }}
+      </div>
+      <div class="kpi-stat-sub">Latest market valuation</div>
+    </div>
+
+    <div class="card" style="padding: 1rem;">
+      <div class="kpi-stat-label">Unrealized Net P&L</div>
+      <div class="kpi-stat-value num" style="color: {% if analytics.unrealized_pl >= 0 %}var(--color-positive){% else %}var(--color-negative){% endif %};">
+        {% if analytics.unrealized_pl >= 0 %}+{% endif %}{{ analytics.currency_symbol }}{{ analytics.unrealized_pl|floatformat:2 }}
+      </div>
+      <div class="kpi-stat-sub">
+        <span class="delta-badge {% if analytics.unrealized_pl >= 0 %}pos{% else %}neg{% endif %} num">
+          {% if analytics.unrealized_pl >= 0 %}+{% endif %}{{ analytics.unrealized_pl_pct|floatformat:2 }}%
+        </span>
+        Weighted Return
+      </div>
+    </div>
+
+    <div class="card" style="padding: 1rem;">
+      <div class="kpi-stat-label">Realized Net Profits</div>
+      <div class="kpi-stat-value num" style="color: {% if analytics.realized_pl >= 0 %}var(--color-positive){% else %}var(--color-negative){% endif %};">
+        {% if analytics.realized_pl >= 0 %}+{% endif %}{{ analytics.currency_symbol }}{{ analytics.realized_pl|floatformat:2 }}
+      </div>
+      <div class="kpi-stat-sub">Booked gains from executed sales</div>
+    </div>
+  </div>
+
+  <!-- Asset Allocation Charts Section -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+    <!-- Allocation by Stock -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Allocation by Equity Position</div>
+          <div style="font-size: 11px; color: var(--text-muted);">Share of total market valuation</div>
+        </div>
+      </div>
+      <div id="stockAllocChart" style="height: 280px;"></div>
+    </div>
+
+    <!-- Allocation by Sector -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Sector Diversification</div>
+          <div style="font-size: 11px; color: var(--text-muted);">Industry concentration breakdown</div>
+        </div>
+      </div>
+      <div id="sectorAllocChart" style="height: 280px;"></div>
+    </div>
+  </div>
+
+  <!-- Active Holdings Table -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Current Active Holdings</div>
+        <div style="font-size: 11px; color: var(--text-muted);">Positions calculated via average cost basis</div>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="fin-table">
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>Company Name</th>
+            <th class="text-right">Shares Held</th>
+            <th class="text-right">Avg Acquisition Cost</th>
+            <th class="text-right">Current Price</th>
+            <th class="text-right">Current Value</th>
+            <th class="text-right">Invested Capital</th>
+            <th class="text-right">Unrealized P&L</th>
+            <th class="text-right">P&L %</th>
+            <th class="text-center">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for h in analytics.holdings %}
+            <tr>
+              <td>
+                <a href="/stocks/{{ h.stock.symbol }}/" style="font-weight: 700;">{{ h.stock.symbol }}</a>
+              </td>
+              <td style="color: var(--text-secondary); max-width: 150px; overflow: hidden; text-overflow: ellipsis;">
+                {{ h.stock.name }}
+              </td>
+              <td class="text-right num" style="font-weight: 600;">
+                {{ h.shares|floatformat:2 }}
+              </td>
+              <td class="text-right num">
+                {{ h.currency_symbol }}{{ h.avg_cost|floatformat:2 }}
+              </td>
+              <td class="text-right num" style="font-weight: 600;">
+                {{ h.currency_symbol }}{{ h.current_price|floatformat:2 }}
+              </td>
+              <td class="text-right num" style="font-weight: 700;">
+                {{ h.currency_symbol }}{{ h.current_value|floatformat:2 }}
+              </td>
+              <td class="text-right num">
+                {{ h.currency_symbol }}{{ h.invested_amount|floatformat:2 }}
+              </td>
+              <td class="text-right num" style="font-weight: 700; color: {% if h.unrealized_pl >= 0 %}var(--color-positive){% else %}var(--color-negative){% endif %};">
+                {% if h.unrealized_pl >= 0 %}+{% endif %}{{ h.currency_symbol }}{{ h.unrealized_pl|floatformat:2 }}
+              </td>
+              <td class="text-right num">
+                <span class="delta-badge {% if h.unrealized_pl >= 0 %}pos{% else %}neg{% endif %}">
+                  {% if h.unrealized_pl >= 0 %}+{% endif %}{{ h.unrealized_pl_pct|floatformat:2 }}%
+                </span>
+              </td>
+              <td class="text-center">
+                <a href="/stocks/{{ h.stock.symbol }}/" class="btn btn-secondary btn-sm" style="padding: 2px 6px; font-size: 11px;">Analysis</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Render Stock Allocation Donut
+    const stockLabels = [{% for s in analytics.stock_allocation %}"{{ s.symbol }}",{% endfor %}];
+    const stockValues = [{% for s in analytics.stock_allocation %}{{ s.value }},{% endfor %}];
+    StockSenseCharts.renderAllocationChart('stockAllocChart', stockLabels, stockValues);
+
+    // Render Sector Allocation Donut
+    const sectorLabels = [{% for sec in analytics.sector_allocation %}"{{ sec.sector }}",{% endfor %}];
+    const sectorValues = [{% for sec in analytics.sector_allocation %}{{ sec.value }},{% endfor %}];
+    StockSenseCharts.renderAllocationChart('sectorAllocChart', sectorLabels, sectorValues);
+  });
+  </script>
+{% endif %}
+{% endblock %}

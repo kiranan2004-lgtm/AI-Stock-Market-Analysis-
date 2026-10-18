@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Create Account - StockSense AI Platform{% endblock %}
+
+{% block public_content %}
+<div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background-color: var(--bg-app); padding: 2rem 1.5rem;">
+  <div style="width: 100%; max-width: 480px; background-color: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 2.25rem; box-shadow: 0 15px 35px rgba(0,0,0,0.5);">
+    
+    <!-- Branding Header -->
+    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+      <div class="brand-icon" style="width: 32px; height: 32px; font-size: 16px;">S</div>
+      <div>
+        <h1 style="font-size: 18px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.3px;">StockSense AI</h1>
+        <div style="font-size: 11px; color: var(--text-muted);">Create Institutional Analytics Account</div>
+      </div>
+    </div>
+
+    <!-- Error Messages -->
+    {% if form.errors %}
+      <div style="background-color: var(--color-negative-bg); color: var(--color-negative); border: 1px solid var(--color-negative); padding: 0.65rem 0.85rem; border-radius: var(--radius-sm); font-size: 12px; margin-bottom: 1.25rem;">
+        {% for field, errors in form.errors.items %}
+          <div><strong>{{ field|title }}:</strong> {{ errors|striptags }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <!-- Signup Form -->
+    <form method="post" action="{% url 'signup' %}">
+      {% csrf_token %}
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+        <div class="form-group">
+          <label class="form-label" for="id_first_name">First Name</label>
+          {{ form.first_name }}
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="id_last_name">Last Name</label>
+          {{ form.last_name }}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="id_username">Username *</label>
+        {{ form.username }}
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="id_email">Email Address *</label>
+        {{ form.email }}
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="id_preferred_currency">Preferred Base Currency</label>
+        {{ form.preferred_currency }}
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+        <div class="form-group">
+          <label class="form-label" for="id_password">Password *</label>
+          {{ form.password }}
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="id_password_confirm">Confirm Password *</label>
+          {{ form.password_confirm }}
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.65rem; margin-top: 0.5rem;">
+        Create Account & Launch Workspace
+      </button>
+    </form>
+
+    <!-- Footer Links -->
+    <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted);">
+      <span>Already have an account? <a href="/login/">Sign In</a></span>
+      <a href="/">Platform Home</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

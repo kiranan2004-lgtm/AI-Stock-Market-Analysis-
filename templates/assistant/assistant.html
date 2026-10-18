@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}StockSense Research Assistant - AI Financial Intelligence{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 1rem;">
+  <div>
+    <h1 class="page-title">StockSense Research Assistant</h1>
+    <div class="page-subtitle">Grounded financial research, indicator analysis, and personal portfolio inquiries</div>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 280px 1fr; gap: 1.25rem; height: calc(100vh - 170px); min-height: 520px;">
+  <!-- Left: Research Sessions / History -->
+  <div class="card" style="display: flex; flex-direction: column; padding: 1rem; overflow: hidden;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+      <span style="font-weight: 600; font-size: 13px; color: var(--text-primary);">Sessions</span>
+      <button class="btn btn-secondary btn-sm" onclick="startNewSession()" style="font-size: 11px; padding: 2px 6px;">
+        + New
+      </button>
+    </div>
+
+    <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.35rem;" id="conversationsList">
+      {% for conv in conversations %}
+        <div onclick="selectConversation({{ conv.id }})" class="nav-link {% if active_conversation.id == conv.id %}active{% endif %}" style="cursor: pointer; padding: 0.5rem 0.65rem; border-radius: var(--radius-sm); font-size: 12.5px;">
+          <i data-lucide="message-square" style="width: 14px; height: 14px; flex-shrink: 0;"></i>
+          <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ conv.title }}</span>
+        </div>
+      {% empty %}
+        <div style="color: var(--text-muted); font-size: 12px; padding: 1rem 0;">No prior sessions recorded.</div>
+      {% endfor %}
+    </div>
+
+    <!-- Suggested Query Chips -->
+    <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.75rem; margin-top: 0.5rem;">
+      <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 0.5rem;">Suggested Queries:</div>
+      <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+        <button class="btn btn-secondary btn-sm" style="text-align: left; justify-content: flex-start; font-size: 11px;" onclick="sendSuggested('How is my portfolio performing?')">
+          &bull; "How is my portfolio performing?"
+        </button>
+        <button class="btn btn-secondary btn-sm" style="text-align: left; justify-content: flex-start; font-size: 11px;" onclick="sendSuggested('Calculate RSI and MACD for TCS')">
+          &bull; "Calculate RSI and MACD for TCS"
+        </button>
+        <button class="btn btn-secondary btn-sm" style="text-align: left; justify-content: flex-start; font-size: 11px;" onclick="sendSuggested('What is the current quote for Reliance?')">
+          &bull; "Quote for Reliance Industries"
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Interactive Chat Interface -->
+  <div class="card" style="display: flex; flex-direction: column; padding: 1.25rem; overflow: hidden;">
+    <!-- Messages Scroll Area -->
+    <div id="chatMessagesArea" style="flex: 1; overflow-y: auto; padding-right: 0.5rem; display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1rem;">
+      <!-- Welcome Empty State -->
+      {% if not active_conversation or not active_conversation.messages.exists %}
+        <div class="empty-state" style="margin: auto;">
+          <i data-lucide="bot" class="empty-state-icon" style="width: 44px; height: 44px; color: var(--accent-primary);"></i>
+          <div class="empty-state-title">StockSense Research Assistant</div>
+          <div class="empty-state-desc">
+            Ask questions regarding equities, technical indicators, financial definitions, or your authenticated portfolio holdings. Responses are grounded in live platform data.
+          </div>
+        </div>
+      {% else %}
+        {% for msg in active_conversation.messages.all %}
+          <div style="display: flex; gap: 0.75rem; {% if msg.role == 'user' %}flex-direction: row-reverse;{% endif %}">
+            <div style="width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; {% if msg.role == 'user' %}background: #1f6feb; color: white;{% else %}background: var(--bg-surface-elevated); color: var(--accent-primary); border: 1px solid var(--border-subtle);{% endif %}">
+              {% if msg.role == 'user' %}U{% else %}AI{% endif %}
+            </div>
+            <div style="max-width: 80%; background: {% if msg.role == 'user' %}var(--bg-surface-elevated){% else %}var(--bg-app){% endif %}; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.85rem 1rem; font-size: 13px; line-height: 1.6; white-space: pre-wrap;">
+              {{ msg.content }}
+            </div>
+          </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+
+    <!-- Chat Input Controls -->
+    <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.75rem;">
+      <form id="chatForm" onsubmit="handleChatSubmit(event)" style="display: flex; gap: 0.5rem;">
+        <input
+          type="text"
+          id="chatInput"
+          class="form-input"
+          placeholder="Ask about a stock, technical indicator, or your portfolio..."
+          autocomplete="off"
+          style="flex: 1;"
+        >
+        <button type="submit" class="btn btn-primary" id="btnSendChat">
+          <i data-lucide="send" style="width: 14px; height: 14px;"></i>
+          <span>Send</span>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentConversationId = {{ active_conversation.id|default:"null" }};
+
+function sendSuggested(query) {
+  document.getElementById('chatInput').value = query;
+  handleChatSubmit(new Event('submit'));
+}
+
+function startNewSession() {
+  currentConversationId = null;
+  document.getElementById('chatMessagesArea').innerHTML = `
+    <div class="empty-state" style="margin: auto;">
+      <i data-lucide="bot" class="empty-state-icon" style="width: 44px; height: 44px; color: var(--accent-primary);"></i>
+      <div class="empty-state-title">New Research Session</div>
+      <div class="empty-state-desc">Ask your question to initiate a new session grounded in platform data.</div>
+    </div>
+  `;
+  if (window.lucide) window.lucide.createIcons();
+}
+
+async function handleChatSubmit(e) {
+  e.preventDefault();
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+
+  const btn = document.getElementById('btnSendChat');
+  const messagesArea = document.getElementById('chatMessagesArea');
+
+  // Append user bubble immediately
+  appendBubble('user', text);
+  input.value = '';
+  btn.disabled = true;
+
+  // Add thinking placeholder
+  const placeholder = appendThinkingBubble();
+
+  try {
+    const res = await fetch('/api/assistant/chat/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN || ''
+      },
+      body: JSON.stringify({
+        message: text,
+        conversation_id: currentConversationId
+      })
+    });
+    const data = await res.json();
+    placeholder.remove();
+
+    if (data.success) {
+      currentConversationId = data.conversation_id;
+      appendBubble('assistant', data.content);
+    } else {
+      appendBubble('assistant', 'Error: ' + (data.error || 'Could not process query.'));
+    }
+  } catch (err) {
+    placeholder.remove();
+    appendBubble('assistant', 'Network failure communicating with assistant service: ' + err);
+  } finally {
+    btn.disabled = false;
+    messagesArea.scrollTop = messagesArea.scrollHeight;
+  }
+}
+
+function appendBubble(role, content) {
+  const messagesArea = document.getElementById('chatMessagesArea');
+  const div = document.createElement('div');
+  div.style.cssText = `display: flex; gap: 0.75rem; ${role === 'user' ? 'flex-direction: row-reverse;' : ''}`;
+  div.innerHTML = `
+    <div style="width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; ${role === 'user' ? 'background: #1f6feb; color: white;' : 'background: var(--bg-surface-elevated); color: var(--accent-primary); border: 1px solid var(--border-subtle);'}">
+      ${role === 'user' ? 'U' : 'AI'}
+    </div>
+    <div style="max-width: 80%; background: ${role === 'user' ? 'var(--bg-surface-elevated)' : 'var(--bg-app)'}; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.85rem 1rem; font-size: 13px; line-height: 1.6; white-space: pre-wrap;">
+      ${content}
+    </div>
+  `;
+  messagesArea.appendChild(div);
+  messagesArea.scrollTop = messagesArea.scrollHeight;
+}
+
+function appendThinkingBubble() {
+  const messagesArea = document.getElementById('chatMessagesArea');
+  const div = document.createElement('div');
+  div.style.cssText = "display: flex; gap: 0.75rem;";
+  div.innerHTML = `
+    <div style="width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; background: var(--bg-surface-elevated); color: var(--accent-primary); border: 1px solid var(--border-subtle);">
+      AI
+    </div>
+    <div style="background: var(--bg-app); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem 1rem; font-size: 13px; color: var(--text-muted); font-style: italic;">
+      Retrieving market data & analyzing...
+    </div>
+  `;
+  messagesArea.appendChild(div);
+  messagesArea.scrollTop = messagesArea.scrollHeight;
+  return div;
+}
+
+function selectConversation(id) {
+  window.location.href = `/assistant/?c=${id}`;
+}
+</script>
+{% endblock %}
