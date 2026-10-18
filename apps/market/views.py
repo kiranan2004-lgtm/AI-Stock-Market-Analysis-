@@ -17,7 +17,7 @@ def landing_view(request):
     featured_symbols = ['RELIANCE.NS', 'TCS.NS', 'AAPL', 'NVDA', 'HDFCBANK.NS', 'MSFT']
     featured = []
     for s in featured_symbols:
-        q = MarketDataService.get_stock_quote(s)
+        q = MarketDataService.get_stock_quote(s, fast_mode=True)
         if q.get('success'):
             featured.append(q)
 
