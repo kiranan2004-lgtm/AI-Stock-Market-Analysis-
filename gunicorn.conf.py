@@ -5,7 +5,7 @@ port = os.environ.get("PORT", "10000")
 bind = f"0.0.0.0:{port}"
 
 # Concurrency configuration suitable for Render 512MB free tier
-workers = 2
+workers = 1
 threads = 4
 timeout = 120
 keepalive = 5

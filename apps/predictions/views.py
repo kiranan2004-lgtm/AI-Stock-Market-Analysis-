@@ -7,7 +7,6 @@ from rest_framework.response import Response
 from apps.market.models import Stock
 from apps.market.services import DEFAULT_STOCK_UNIVERSE
 from .models import PredictionRun
-from .services.forecasting import ForecastingService
 from .serializers import PredictionRunSerializer
 
 @login_required
@@ -74,6 +73,7 @@ def api_predict(request, symbol):
         horizon = 30
 
     try:
+        from .services.forecasting import ForecastingService
         result = ForecastingService.train_and_forecast(clean_symbol, model_type=model_type, horizon=horizon)
         if not result.get('success'):
             return Response(result, status=400)
@@ -107,6 +107,7 @@ def api_train(request):
         except (ValueError, TypeError):
             horizon = 30
 
+        from .services.forecasting import ForecastingService
         result = ForecastingService.train_and_forecast(symbol, model_type=model_type, horizon=horizon)
         if not result.get('success'):
             return Response(result, status=400)
@@ -122,6 +123,7 @@ def api_compare_models(request, symbol):
     """Run and compare all models on identical test data. Always returns JSON."""
     clean_symbol = (symbol or '').upper().strip()
     try:
+        from .services.forecasting import ForecastingService
         result = ForecastingService.compare_models(clean_symbol)
         if not result.get('success'):
             return Response(result, status=400)
